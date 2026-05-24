@@ -3,7 +3,6 @@ variable "nodes" {
   type = map(object({
     name        = string
     target_node = string
-    ip_address  = string
   }))
 }
 
@@ -22,8 +21,9 @@ variable "cluster_name" {
 }
 
 variable "cluster_endpoint" {
-  description = "Talos cluster API endpoint URL, e.g. https://192.168.1.10:6443."
+  description = "Talos cluster API endpoint URL, e.g. https://192.168.1.10:6443. When null (controlplane modules), auto-derived from the first node's DHCP-assigned IP."
   type        = string
+  default     = null
 }
 
 variable "machine_secrets" {

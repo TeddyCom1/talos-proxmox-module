@@ -1,6 +1,6 @@
 output "node_ips" {
-  description = "Map of node key to IP address."
-  value       = { for k, v in var.nodes : k => v.ip_address }
+  description = "Map of node key to DHCP-assigned IP address."
+  value       = { for k, v in proxmox_vm_qemu.node : k => v.default_ipv4_address }
 }
 
 output "machine_configurations" {
