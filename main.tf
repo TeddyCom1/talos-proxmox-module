@@ -83,5 +83,5 @@ resource "talos_machine_configuration_apply" "node" {
   node                        = local.node_ips[each.key]
 
   # Wait for the VM to exist before trying to reach the Talos maintenance API.
-  depends_on = [proxmox_virtual_environment_vm.node]
+  depends_on = [ proxmox_virtual_environment_vm.node ]
 }
