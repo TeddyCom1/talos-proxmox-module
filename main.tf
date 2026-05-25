@@ -19,7 +19,7 @@ resource "proxmox_vm_qemu" "node" {
   onboot  = var.onboot
   cores   = var.cores
   memory  = var.memory
-  cpu     = "host"
+  cpu_type = "host"
   sockets = 1
 
   # Boot from CD first so Talos can install, then fall back to disk.
@@ -45,6 +45,7 @@ resource "proxmox_vm_qemu" "node" {
   }
 
   network {
+    id     = 0
     bridge = "vmbr0"
     model  = "virtio"
     tag    = var.vlan_id
@@ -57,7 +58,7 @@ resource "proxmox_vm_qemu" "node" {
   }
 }
 
-resource "talos_machine_configuration" "node" {
+data "talos_machine_configuration" "node" {
   for_each = var.nodes
 
   cluster_name       = var.cluster_name
@@ -72,7 +73,7 @@ resource "talos_machine_configuration_apply" "node" {
   for_each = var.nodes
 
   client_configuration        = var.machine_secrets.client_configuration
-  machine_configuration_input = talos_machine_configuration.node[each.key].machine_configuration
+  machine_configuration_input = data.talos_machine_configuration.node[each.key].machine_configuration
   node                        = proxmox_vm_qemu.node[each.key].default_ipv4_address
 
   # Wait for the VM to exist before trying to reach the Talos maintenance API.
