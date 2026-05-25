@@ -27,12 +27,10 @@ resource "proxmox_virtual_environment_vm" "node" {
   # with the qemu-guest-agent extension (https://factory.talos.dev/).
   agent {
     enabled = true
-    timeout = "120s"
   }
 
   cpu {
     cores   = var.cores
-    sockets = 1
     type  = "x86-64-v2-AES"
   }
 
