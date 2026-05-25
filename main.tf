@@ -16,7 +16,6 @@ resource "proxmox_vm_qemu" "node" {
   # DHCP-assigned IP via default_ipv4_address. Requires a Talos image built
   # with the qemu-guest-agent extension (https://factory.talos.dev/).
   agent               = 1
-  agent_timeout       = 120
   skip_ipv6           = true
   start_at_node_boot  = var.onboot
   memory              = var.memory
@@ -53,6 +52,10 @@ resource "proxmox_vm_qemu" "node" {
     bridge = "vmbr0"
     model  = "virtio"
     tag    = var.vlan_id
+  }
+
+  timeout {
+    create = "1m"
   }
 
   lifecycle {
