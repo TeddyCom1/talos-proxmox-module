@@ -17,12 +17,12 @@ resource "proxmox_vm_qemu" "node" {
   # with the qemu-guest-agent extension (https://factory.talos.dev/).
   agent   = 1
   onboot  = var.onboot
-  cores   = var.cores
   memory  = var.memory
-  sockets = 1
-
+  
   cpu {
-    cpu_type = "host"
+    type    = "host"
+    cores   = var.cores
+    sockets = 1
   }
 
   # Boot from CD first so Talos can install, then fall back to disk.
