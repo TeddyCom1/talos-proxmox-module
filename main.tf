@@ -40,7 +40,7 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   # Boot from CD first so Talos can install, then fall back to disk.
   # After first boot Talos writes its own bootloader; this order is then irrelevant.
-  boot_order = ["ide0", "virtio0"]
+  boot_order = ["virtio0", "ide0"]
 
   disk {
     interface    = "virtio0"
