@@ -43,7 +43,7 @@ variable "kubernetes_version" {
   default     = null
 }
 
-variable "iso_image" {
+variable "image" {
   description = "Proxmox datastore path to the Talos ISO, e.g. local:iso/talos-v1.9.5-amd64.iso."
   type        = string
 }
