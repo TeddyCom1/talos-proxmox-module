@@ -19,8 +19,11 @@ resource "proxmox_vm_qemu" "node" {
   onboot  = var.onboot
   cores   = var.cores
   memory  = var.memory
-  cpu_type = "host"
   sockets = 1
+
+  cpu {
+    cpu_type = "host"
+  }
 
   # Boot from CD first so Talos can install, then fall back to disk.
   # After first boot Talos writes its own bootloader; this order is then irrelevant.
