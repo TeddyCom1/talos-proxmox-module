@@ -15,11 +15,12 @@ locals {
 
 resource "proxmox_virtual_environment_vm" "node" {
   for_each = var.nodes
-
-  name        = each.value.name
-  node_name   = each.value.target_node
-  description = "Managed by Terraform — Talos ${var.node_type}"
-  on_boot     = var.onboot
+  tags            = ["terraform", "talos"]
+  name            = each.value.name
+  node_name       = each.value.target_node
+  description     = "Managed by Terraform — Talos ${var.node_type}"
+  on_boot         = var.onboot
+  stop_on_destroy = true
 
   # enabled = true enables the QEMU guest agent interface so Proxmox can read the
   # DHCP-assigned IP via ipv4_addresses. Requires a Talos image built
@@ -37,11 +38,6 @@ resource "proxmox_virtual_environment_vm" "node" {
   memory {
     dedicated = var.memory
   }
-
-  # Boot from CD first so Talos can install, then fall back to disk.
-  # After first boot Talos writes its own bootloader; this order is then irrelevant.
-  boot_order = ["virtio0", "ide0"]
-
   disk {
     interface    = "virtio0"
     datastore_id = var.storage_pool
