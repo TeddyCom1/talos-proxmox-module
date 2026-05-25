@@ -20,7 +20,6 @@ resource "proxmox_vm_qemu" "node" {
   memory              = var.memory
   
   cpu {
-    type    = "host"
     cores   = var.cores
     sockets = 1
   }
