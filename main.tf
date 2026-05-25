@@ -15,9 +15,9 @@ resource "proxmox_vm_qemu" "node" {
   # agent = 1 enables the QEMU guest agent interface so Proxmox can read the
   # DHCP-assigned IP via default_ipv4_address. Requires a Talos image built
   # with the qemu-guest-agent extension (https://factory.talos.dev/).
-  agent   = 1
-  onboot  = var.onboot
-  memory  = var.memory
+  agent               = 1
+  start_at_node_boot  = var.onboot
+  memory              = var.memory
   
   cpu {
     type    = "host"
