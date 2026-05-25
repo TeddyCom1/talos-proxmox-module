@@ -54,8 +54,8 @@ resource "proxmox_vm_qemu" "node" {
     tag    = var.vlan_id
   }
 
-  timeout {
-    create = "1m"
+  timeouts {
+    create = "30s"
   }
 
   lifecycle {
