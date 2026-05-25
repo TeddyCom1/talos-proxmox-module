@@ -10,7 +10,7 @@ resource "proxmox_vm_qemu" "node" {
 
   name        = each.value.name
   target_node = each.value.target_node
-  desc        = "Managed by Terraform — Talos ${var.node_type}"
+  description        = "Managed by Terraform — Talos ${var.node_type}"
 
   # agent = 1 enables the QEMU guest agent interface so Proxmox can read the
   # DHCP-assigned IP via default_ipv4_address. Requires a Talos image built
