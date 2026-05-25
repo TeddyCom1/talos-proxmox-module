@@ -49,9 +49,8 @@ resource "proxmox_virtual_environment_vm" "node" {
     file_format  = "raw"
   }
 
-  disk {
+  cdrom {
     interface = "ide0"
-    media     = "cdrom"
     file_id   = var.iso_image
   }
 
