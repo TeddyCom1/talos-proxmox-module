@@ -33,6 +33,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   cpu {
     cores   = var.cores
     sockets = 1
+    type  = "x86-64-v2-AES"
   }
 
   memory {
