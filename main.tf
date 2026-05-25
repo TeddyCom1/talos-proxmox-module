@@ -42,12 +42,7 @@ resource "proxmox_virtual_environment_vm" "node" {
     interface    = "virtio0"
     datastore_id = var.storage_pool
     size         = var.disk_size
-    file_format  = "raw"
-  }
-
-  cdrom {
-    interface = "ide0"
-    file_id   = var.iso_image
+    file_id      = var.iso_image
   }
 
   network_device {
