@@ -38,9 +38,13 @@ resource "proxmox_virtual_environment_vm" "node" {
     dedicated = var.memory
   }
 
+  cdrom {
+    file_id   = var.image_id
+    interface = "ide2"
+  }
+
   disk {
     datastore_id = var.storage_pool
-    file_id      = var.image_id
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
