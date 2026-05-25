@@ -17,6 +17,7 @@ resource "proxmox_vm_qemu" "node" {
   # with the qemu-guest-agent extension (https://factory.talos.dev/).
   agent               = 1
   agent_timeout       = 120
+  skip_ipv6           = true
   start_at_node_boot  = var.onboot
   memory              = var.memory
   
