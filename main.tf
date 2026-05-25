@@ -43,6 +43,8 @@ resource "proxmox_virtual_environment_vm" "node" {
     datastore_id = var.storage_pool
     size         = var.disk_size
     file_id      = var.image
+    iothread     = true
+    discard      = "on"
   }
 
   network_device {
