@@ -58,6 +58,10 @@ resource "proxmox_virtual_environment_vm" "node" {
     vlan_id = var.vlan_id == -1 ? null : var.vlan_id
   }
 
+  operating_system {
+    type = "l26"
+  }
+
   lifecycle {
     # Talos installs its own bootloader and modifies the disk on first boot.
     # Ignore these after creation to prevent Terraform from fighting Talos.
