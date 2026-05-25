@@ -41,14 +41,11 @@ resource "proxmox_virtual_environment_vm" "node" {
   disk {
     datastore_id = var.storage_pool
     file_id      = var.image_id
+    file_format  = "raw"
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
     size         = var.disk_size
-  }
-
-  initialization {
-    datastore_id = var.storage_pool
   }
 
   network_device {
