@@ -3,7 +3,7 @@
 Terraform module that provisions Talos Linux Kubernetes nodes on Proxmox VE. A single module call provisions one role (control plane or worker); call it twice to build a full cluster.
 
 Each call:
-1. Creates `proxmox_vm_qemu` VMs booted from the Talos ISO
+1. Creates `proxmox_virtual_environment_vm` VMs booted from the Talos ISO
 2. Waits for the QEMU guest agent to report each node's DHCP-assigned IP
 3. Generates per-node Talos machine configs via the `siderolabs/talos` provider
 4. Applies those configs to each node over the Talos maintenance API
@@ -20,7 +20,7 @@ Bootstrapping (`talos_bootstrap`) is intentionally left to the root module so it
 
 | Name | Source | Version |
 |---|---|---|
-| proxmox | telmate/proxmox | ~> 3.0 |
+| proxmox | bpg/proxmox | >= 0.66.0 |
 | talos | siderolabs/talos | ~> 0.7 |
 
 ## Usage
@@ -110,10 +110,10 @@ module "workers" {
 
 ## How first-boot works
 
-VMs are created with `agent = 1`, which enables the QEMU guest agent interface in Proxmox. Once the VM boots and Talos's guest agent reports the DHCP-assigned IP, the provider populates `default_ipv4_address` and Terraform proceeds.
+VMs are created with `agent { enabled = true }`, which enables the QEMU guest agent interface in Proxmox. Once the VM boots and Talos's guest agent reports the DHCP-assigned IP, the provider populates `ipv4_addresses` and Terraform proceeds.
 
 The `talos_machine_configuration_apply` resource uses that IP to push the machine config over the Talos maintenance API. Talos then installs itself to the virtio disk and reboots.
 
-After that first cycle, `lifecycle.ignore_changes = [boot, disks]` prevents Terraform from resetting the boot order or disk state on subsequent applies.
+After that first cycle, `lifecycle.ignore_changes = [boot_order, disk]` prevents Terraform from resetting the boot order or disk state on subsequent applies.
 
 For the control plane module (`cluster_endpoint = null`), the cluster API endpoint is computed as `https://<first-cp-node-ip>:6443` using `keys(var.nodes)[0]` (alphabetically first key). Worker modules derive the same endpoint by referencing the control plane module's `node_ips` output.
