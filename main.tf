@@ -38,6 +38,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   memory {
     dedicated = var.memory
   }
+
   disk {
     interface    = "virtio0"
     datastore_id = var.storage_pool
@@ -45,6 +46,10 @@ resource "proxmox_virtual_environment_vm" "node" {
     file_id      = var.image
     iothread     = true
     discard      = "on"
+  }
+
+  initialization {
+    datastore_id = var.storage_pool
   }
 
   network_device {
