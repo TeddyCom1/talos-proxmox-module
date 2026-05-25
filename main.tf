@@ -16,7 +16,7 @@ resource "proxmox_vm_qemu" "node" {
   # DHCP-assigned IP via default_ipv4_address. Requires a Talos image built
   # with the qemu-guest-agent extension (https://factory.talos.dev/).
   agent               = 1
-  agent_timeout       = 90
+  agent_timeout       = 120
   start_at_node_boot  = var.onboot
   memory              = var.memory
   
