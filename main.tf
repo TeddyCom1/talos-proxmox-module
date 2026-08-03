@@ -1,8 +1,13 @@
 locals {
-  node_ip = [
+  node_ip_candidates = [
     for addrs in proxmox_virtual_environment_vm.node.ipv4_addresses : addrs[0]
     if length(addrs) > 0 && !startswith(addrs[0], "127.")
-  ][0]
+  ]
+
+  # null until the QEMU guest agent reports a non-loopback address; guarded by
+  # the precondition on data.talos_machine_configuration.node below so a still-booting
+  # VM produces one clear error instead of crashing on an empty-list index.
+  node_ip = length(local.node_ip_candidates) > 0 ? local.node_ip_candidates[0] : null
 
   # For controlplane modules (cluster_endpoint = null), derive the endpoint from
   # this node's DHCP-assigned IP as reported by the QEMU guest agent.
@@ -67,4 +72,11 @@ data "talos_machine_configuration" "node" {
   machine_secrets    = var.machine_secrets.machine_secrets
   talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
+
+  lifecycle {
+    precondition {
+      condition     = local.node_ip != null
+      error_message = "VM '${var.vm_name}' has no non-loopback IPv4 address yet. The QEMU guest agent hasn't reported an address — the VM may still be booting, or the Talos image is missing the qemu-guest-agent extension (https://factory.talos.dev/). Re-run apply once the VM is up."
+    }
+  }
 }
