@@ -1,23 +1,19 @@
 locals {
-  node_ips = {
-    for k, v in proxmox_virtual_environment_vm.node :
-    k => [
-      for addrs in v.ipv4_addresses : addrs[0]
-      if length(addrs) > 0 && !startswith(addrs[0], "127.")
-    ][0]
-  }
+  node_ip = [
+    for addrs in proxmox_virtual_environment_vm.node.ipv4_addresses : addrs[0]
+    if length(addrs) > 0 && !startswith(addrs[0], "127.")
+  ][0]
 
   # For controlplane modules (cluster_endpoint = null), derive the endpoint from
-  # the first node's DHCP-assigned IP as reported by the QEMU guest agent.
+  # this node's DHCP-assigned IP as reported by the QEMU guest agent.
   # Worker modules must pass cluster_endpoint explicitly (the controlplane's IP).
-  cluster_endpoint = var.cluster_endpoint != null ? var.cluster_endpoint : "https://${local.node_ips[keys(var.nodes)[0]]}:6443"
+  cluster_endpoint = var.cluster_endpoint != null ? var.cluster_endpoint : "https://${local.node_ip}:6443"
 }
 
 resource "proxmox_virtual_environment_vm" "node" {
-  for_each = var.nodes
   tags            = ["terraform", "talos"]
-  name            = each.value.name
-  node_name       = each.value.target_node
+  name            = var.vm_name
+  node_name       = var.target_node
   description     = "Managed by Terraform — Talos ${var.node_type}"
   on_boot         = var.onboot
   stop_on_destroy = true
@@ -30,7 +26,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   cpu {
-    cores   = var.cores
+    cores = var.cores
     type  = "x86-64-v2-AES"
   }
 
@@ -65,23 +61,10 @@ resource "proxmox_virtual_environment_vm" "node" {
 }
 
 data "talos_machine_configuration" "node" {
-  for_each = var.nodes
-
   cluster_name       = var.cluster_name
   cluster_endpoint   = local.cluster_endpoint
   machine_type       = var.node_type
   machine_secrets    = var.machine_secrets.machine_secrets
   talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
-}
-
-resource "talos_machine_configuration_apply" "node" {
-  for_each = var.nodes
-
-  client_configuration        = var.machine_secrets.client_configuration
-  machine_configuration_input = data.talos_machine_configuration.node[each.key].machine_configuration
-  node                        = local.node_ips[each.key]
-
-  # Wait for the VM to exist before trying to reach the Talos maintenance API.
-  depends_on = [proxmox_virtual_environment_vm.node]
 }

@@ -1,9 +1,11 @@
-variable "nodes" {
-  description = "Map of nodes to provision. Key is a stable resource identifier used in state."
-  type = map(object({
-    name        = string
-    target_node = string
-  }))
+variable "vm_name" {
+  description = "Name of the Proxmox VM."
+  type        = string
+}
+
+variable "target_node" {
+  description = "Proxmox node to place the VM on."
+  type        = string
 }
 
 variable "node_type" {

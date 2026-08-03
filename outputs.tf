@@ -1,10 +1,10 @@
-output "node_ips" {
-  description = "Map of node key to DHCP-assigned IP address."
-  value       = local.node_ips
+output "ip" {
+  description = "DHCP-assigned IP address of the node."
+  value       = local.node_ip
 }
 
-output "machine_configurations" {
-  description = "Generated Talos machine configuration YAML per node."
-  value       = { for k, v in data.talos_machine_configuration.node : k => v.machine_configuration }
+output "machine_configuration" {
+  description = "Generated Talos machine configuration YAML for the node."
+  value       = data.talos_machine_configuration.node.machine_configuration
   sensitive   = true
 }

@@ -1,14 +1,13 @@
 # kube-talos-node-module
 
-Terraform module that provisions Talos Linux Kubernetes nodes on Proxmox VE. A single module call provisions one role (control plane or worker); call it twice to build a full cluster.
+Terraform module that provisions a single Talos Linux Kubernetes node on Proxmox VE. Each call creates one VM for one role (control plane or worker); call it once per node to build a full cluster.
 
 Each call:
-1. Creates `proxmox_virtual_environment_vm` VMs booted from the Talos ISO
-2. Waits for the QEMU guest agent to report each node's DHCP-assigned IP
-3. Generates per-node Talos machine configs via the `siderolabs/talos` provider
-4. Applies those configs to each node over the Talos maintenance API
+1. Creates a `proxmox_virtual_environment_vm` VM booted from the Talos ISO
+2. Waits for the QEMU guest agent to report the node's DHCP-assigned IP
+3. Generates the Talos machine config via the `siderolabs/talos` provider
 
-Bootstrapping (`talos_bootstrap`) is intentionally left to the root module so it only runs once across the whole cluster.
+Applying the machine config (`talos_machine_configuration_apply`) and bootstrapping the cluster (`talos_machine_bootstrap`) are intentionally left to the root module — this module only hands back what's needed (`ip` and `machine_configuration`) so the caller can drive that lifecycle itself, e.g. to sequence control-plane bootstrap before workers join.
 
 ## Prerequisites
 
@@ -25,7 +24,7 @@ Bootstrapping (`talos_bootstrap`) is intentionally left to the root module so it
 
 ## Usage
 
-Nodes receive their IP addresses from DHCP automatically — no `ip_address` field is needed. For the control plane module, `cluster_endpoint` is also optional: it is auto-derived from the first control plane node's DHCP-assigned IP. Worker modules must receive the control plane IP explicitly.
+The node receives its IP address from DHCP automatically — no `ip_address` field is needed. For a control plane node, `cluster_endpoint` is also optional: it is auto-derived from the node's own DHCP-assigned IP. Worker nodes must receive the control plane IP explicitly.
 
 ```hcl
 resource "talos_machine_secrets" "this" {}
@@ -37,13 +36,9 @@ module "controlplane" {
   cluster_name    = "my-cluster"
   machine_secrets = talos_machine_secrets.this
   talos_version   = "v1.9.5"
-  iso_image       = "local:iso/talos-v1.9.5-amd64.iso"
-
-  nodes = {
-    cp0 = { name = "cp-0", target_node = "pve0" }
-    cp1 = { name = "cp-1", target_node = "pve1" }
-    cp2 = { name = "cp-2", target_node = "pve2" }
-  }
+  image_id        = "local:iso/talos-v1.9.5-amd64.iso"
+  vm_name         = "cp-0"
+  target_node     = "pve0"
 
   cores     = 2
   memory    = 4096
@@ -51,32 +46,40 @@ module "controlplane" {
   vlan_id   = 10
 }
 
-resource "talos_bootstrap" "this" {
-  client_configuration = talos_machine_secrets.this.client_configuration
-  node                 = module.controlplane.node_ips["cp0"]
-  depends_on           = [module.controlplane]
+resource "talos_machine_configuration_apply" "controlplane" {
+  client_configuration        = talos_machine_secrets.this.client_configuration
+  machine_configuration_input = module.controlplane.machine_configuration
+  node                        = module.controlplane.ip
 }
 
-module "workers" {
+resource "talos_machine_bootstrap" "this" {
+  client_configuration = talos_machine_secrets.this.client_configuration
+  node                  = module.controlplane.ip
+  depends_on            = [talos_machine_configuration_apply.controlplane]
+}
+
+module "worker" {
   source = "./kube-talos-node-module"
 
   node_type        = "worker"
   cluster_name     = "my-cluster"
-  cluster_endpoint = "https://${module.controlplane.node_ips["cp0"]}:6443"
+  cluster_endpoint = "https://${module.controlplane.ip}:6443"
   machine_secrets  = talos_machine_secrets.this   # same secrets resource
   talos_version    = "v1.9.5"
-  iso_image        = "local:iso/talos-v1.9.5-amd64.iso"
-
-  nodes = {
-    w0 = { name = "worker-0", target_node = "pve0" }
-    w1 = { name = "worker-1", target_node = "pve1" }
-  }
+  image_id         = "local:iso/talos-v1.9.5-amd64.iso"
+  vm_name          = "worker-0"
+  target_node      = "pve0"
 
   cores     = 4
   memory    = 8192
   disk_size = 50
+}
 
-  depends_on = [talos_bootstrap.this]
+resource "talos_machine_configuration_apply" "worker" {
+  client_configuration        = talos_machine_secrets.this.client_configuration
+  machine_configuration_input = module.worker.machine_configuration
+  node                        = module.worker.ip
+  depends_on                   = [talos_machine_bootstrap.this]
 }
 ```
 
@@ -86,34 +89,35 @@ module "workers" {
 
 | Name | Description | Type | Default | Required |
 |---|---|---|---|---|
-| `nodes` | Map of nodes to provision. Key is a stable resource identifier. Each value has `name` and `target_node`. | `map(object)` | — | yes |
+| `vm_name` | Name of the Proxmox VM. | `string` | — | yes |
+| `target_node` | Proxmox node to place the VM on. | `string` | — | yes |
 | `node_type` | Talos node role: `controlplane` or `worker`. | `string` | — | yes |
 | `cluster_name` | Talos cluster name. | `string` | — | yes |
-| `cluster_endpoint` | Talos cluster API endpoint URL, e.g. `https://192.168.1.10:6443`. When `null`, auto-derived from the first node's DHCP-assigned IP — intended for controlplane modules. Worker modules must pass this explicitly. | `string` | `null` | no |
+| `cluster_endpoint` | Talos cluster API endpoint URL, e.g. `https://192.168.1.10:6443`. When `null`, auto-derived from this node's DHCP-assigned IP — intended for controlplane modules. Worker modules must pass this explicitly. | `string` | `null` | no |
 | `machine_secrets` | The `talos_machine_secrets` resource. Shared across all calls for the same cluster. | `any` | — | yes |
 | `talos_version` | Talos version string, e.g. `v1.9.5`. Controls the machine config format. | `string` | — | yes |
-| `iso_image` | Proxmox datastore path to the Talos ISO, e.g. `local:iso/talos-v1.9.5-amd64.iso`. | `string` | — | yes |
+| `image_id` | Proxmox datastore path to the Talos ISO, e.g. `local:iso/talos-v1.9.5-amd64.iso`. | `string` | — | yes |
 | `kubernetes_version` | Kubernetes version to install. Defaults to the version bundled with `talos_version`. | `string` | `null` | no |
 | `storage_pool` | Proxmox storage pool for the boot disk. | `string` | `"local-lvm"` | no |
 | `vlan_id` | VLAN tag for the node NIC. `-1` for untagged. | `number` | `-1` | no |
-| `cores` | Number of vCPU cores per node. | `number` | `2` | no |
-| `memory` | Memory per node in MiB. | `number` | `2048` | no |
-| `disk_size` | Boot disk size per node in GiB. | `number` | `20` | no |
-| `onboot` | Start VMs automatically when the Proxmox host boots. | `bool` | `true` | no |
+| `cores` | Number of vCPU cores. | `number` | `2` | no |
+| `memory` | Memory in MiB. | `number` | `2048` | no |
+| `disk_size` | Boot disk size in GiB. | `number` | `20` | no |
+| `onboot` | Start the VM automatically when the Proxmox host boots. | `bool` | `true` | no |
 
 ## Outputs
 
 | Name | Description | Sensitive |
 |---|---|---|
-| `node_ips` | Map of node key to DHCP-assigned IP address (read from QEMU guest agent). | no |
-| `machine_configurations` | Generated Talos machine configuration YAML per node. | yes |
+| `ip` | DHCP-assigned IP address of the node (read from QEMU guest agent). | no |
+| `machine_configuration` | Generated Talos machine configuration YAML for the node. | yes |
 
 ## How first-boot works
 
-VMs are created with `agent { enabled = true }`, which enables the QEMU guest agent interface in Proxmox. Once the VM boots and Talos's guest agent reports the DHCP-assigned IP, the provider populates `ipv4_addresses` and Terraform proceeds.
+The VM is created with `agent { enabled = true }`, which enables the QEMU guest agent interface in Proxmox. Once the VM boots and Talos's guest agent reports the DHCP-assigned IP, the provider populates `ipv4_addresses` and Terraform proceeds.
 
-The `talos_machine_configuration_apply` resource uses that IP to push the machine config over the Talos maintenance API. Talos then installs itself to the virtio disk and reboots.
+The caller is expected to take the `machine_configuration` output and apply it via its own `talos_machine_configuration_apply` resource, targeting the `ip` output — see the usage example above. Talos then installs itself to the virtio disk and reboots.
 
 After that first cycle, `lifecycle.ignore_changes = [boot_order, disk]` prevents Terraform from resetting the boot order or disk state on subsequent applies.
 
-For the control plane module (`cluster_endpoint = null`), the cluster API endpoint is computed as `https://<first-cp-node-ip>:6443` using `keys(var.nodes)[0]` (alphabetically first key). Worker modules derive the same endpoint by referencing the control plane module's `node_ips` output.
+For a control plane node (`cluster_endpoint = null`), the cluster API endpoint is computed as `https://<this-node-ip>:6443`. Worker nodes derive the same endpoint by referencing the control plane module's `ip` output.
