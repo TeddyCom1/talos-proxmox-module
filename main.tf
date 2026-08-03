@@ -1,7 +1,16 @@
 locals {
-  node_ip_candidates = [
+  # Two separate comprehensions, each guarded by a single length check, so no
+  # addrs[0] index is ever evaluated against an empty sublist (Proxmox reports
+  # one sublist per NIC/address slot and most are `[]` until the guest agent
+  # populates them).
+  node_ip_addrs = [
     for addrs in proxmox_virtual_environment_vm.node.ipv4_addresses : addrs[0]
-    if length(addrs) > 0 && !startswith(addrs[0], "127.")
+    if length(addrs) > 0
+  ]
+
+  node_ip_candidates = [
+    for ip in local.node_ip_addrs : ip
+    if !startswith(ip, "127.")
   ]
 
   # null until the QEMU guest agent reports a non-loopback address; guarded by
